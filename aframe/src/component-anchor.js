@@ -67,33 +67,46 @@ AFRAME.registerComponent('arjs-anchor', {
 			//		update arProfile
 			//////////////////////////////////////////////////////////////////////////////
 			var arProfile = arjsSystem._arProfile
-			
+
 			// arProfile.changeMatrixMode('modelViewMatrix')
 			arProfile.changeMatrixMode(_this.data.changeMatrixMode)
 
 			// honor this.data.preset
+			var markerParameters = Object.assign({}, arProfile.defaultMarkerParameters)
+
 			if( _this.data.preset === 'hiro' ){
-				arProfile.defaultMarkerParameters.type = 'pattern'
-				arProfile.defaultMarkerParameters.patternUrl = THREEx.ArToolkitContext.baseURL+'examples/marker-training/examples/pattern-files/pattern-hiro.patt'
-				arProfile.defaultMarkerParameters.markersAreaEnabled = false
+				markerParameters.type = 'pattern'
+				markerParameters.patternUrl = THREEx.ArToolkitContext.baseURL+'examples/marker-training/examples/pattern-files/pattern-hiro.patt'
+				markerParameters.markersAreaEnabled = false
 			}else if( _this.data.preset === 'kanji' ){
-				arProfile.defaultMarkerParameters.type = 'pattern'
-				arProfile.defaultMarkerParameters.patternUrl = THREEx.ArToolkitContext.baseURL+'examples/marker-training/examples/pattern-files/pattern-kanji.patt'
-				arProfile.defaultMarkerParameters.markersAreaEnabled = false
+				markerParameters.type = 'pattern'
+				markerParameters.patternUrl = THREEx.ArToolkitContext.baseURL+'examples/marker-training/examples/pattern-files/pattern-kanji.patt'
+				markerParameters.markersAreaEnabled = false
 			}else if( _this.data.preset === 'area' ){
-				arProfile.defaultMarkerParameters.type = 'barcode'
-				arProfile.defaultMarkerParameters.barcodeValue = 1001	
-				arProfile.defaultMarkerParameters.markersAreaEnabled = true
+				markerParameters.type = 'barcode'
+				markerParameters.barcodeValue = 1001
+				markerParameters.markersAreaEnabled = true
+			}else if( _this.data.type === 'barcode' ){
+				markerParameters = {
+					type:               _this.data.type,
+					changeMatrixMode:   'modelViewMatrix',
+					barcodeValue:       _this.data.barcodeValue,
+					markersAreaEnabled: false
+				}
+			}else if( _this.data.type === 'pattern' ){
+				markerParameters.type = _this.data.type
+				markerParameters.patternUrl = _this.data.patternUrl;
+				markerParameters.markersAreaEnabled = false
 			}else {
 				// console.assert( this.data.preset === '', 'illegal preset value '+this.data.preset)
-			}		
+			}
 
 			//////////////////////////////////////////////////////////////////////////////
 			//		create arAnchor
 			//////////////////////////////////////////////////////////////////////////////
-			
+
 			var arSession = arjsSystem._arSession
-			var arAnchor = _this._arAnchor = new ARjs.Anchor(arSession, arProfile.defaultMarkerParameters)
+			var arAnchor  = _this._arAnchor = new ARjs.Anchor(arSession, markerParameters)
 
 			// it is now considered isReady
 			_this.isReady = true
@@ -112,7 +125,7 @@ AFRAME.registerComponent('arjs-anchor', {
 				}
 				// create anchorDebugUI
 				var anchorDebugUI = new ARjs.AnchorDebugUI(arAnchor)
-				containerElement.appendChild(anchorDebugUI.domElement)		
+				containerElement.appendChild(anchorDebugUI.domElement)
 			}
 		}, 1000/60)
 	},
@@ -135,17 +148,28 @@ AFRAME.registerComponent('arjs-anchor', {
 		//		honor pose
 		//////////////////////////////////////////////////////////////////////////////
 		var arWorldRoot = this._arAnchor.object3d
-		arWorldRoot.updateMatrixWorld(true)		
+		arWorldRoot.updateMatrixWorld(true)
 		arWorldRoot.matrixWorld.decompose(this.el.object3D.position, this.el.object3D.quaternion, this.el.object3D.scale)
 
 		//////////////////////////////////////////////////////////////////////////////
 		//		honor visibility
 		//////////////////////////////////////////////////////////////////////////////
 		if( _this._arAnchor.parameters.changeMatrixMode === 'modelViewMatrix' ){
+			var wasVisible = _this.el.object3D.visible
 			_this.el.object3D.visible = this._arAnchor.object3d.visible
 		}else if( _this._arAnchor.parameters.changeMatrixMode === 'cameraTransformMatrix' ){
+			var wasVisible = _this.el.sceneEl.object3D.visible
 			_this.el.sceneEl.object3D.visible = this._arAnchor.object3d.visible
 		}else console.assert(false)
+
+		// emit markerFound markerLost
+		if( _this._arAnchor.object3d.visible === true && wasVisible === false ){
+			_this.el.emit('markerFound')
+		}else if( _this._arAnchor.object3d.visible === false && wasVisible === true ){
+			_this.el.emit('markerLost')
+		}
+
+
 	}
 })
 
@@ -185,7 +209,7 @@ AFRAME.registerPrimitive('a-camera-static', AFRAME.utils.extendDeep({}, AFRAME.p
 //////////////////////////////////////////////////////////////////////////////
 //		backward compatibility
 //////////////////////////////////////////////////////////////////////////////
-// FIXME 
+// FIXME
 AFRAME.registerPrimitive('a-marker', AFRAME.utils.extendDeep({}, AFRAME.primitives.getMeshMixin(), {
 	defaultComponents: {
 		'arjs-anchor': {},

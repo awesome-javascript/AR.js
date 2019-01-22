@@ -13,7 +13,10 @@ ARjs.Source = THREEx.ArToolkitSource = function(parameters){
 		sourceType : 'webcam',
 		// url of the source - valid if sourceType = image|video
 		sourceUrl : null,
-		
+
+		// Device id of the camera to use (optional)
+		deviceId : null,
+
 		// resolution of at which we initialize in the source image
 		sourceWidth: 640,
 		sourceHeight: 480,
@@ -195,7 +198,14 @@ ARjs.Source.prototype._initSourceWebcam = function(onReady, onError) {
 					// max: 1080
 				}
 		  	}
-                }
+		}
+
+		if (null !== _this.parameters.deviceId) {
+			userMediaConstraints.video.deviceId = {
+				exact: _this.parameters.deviceId
+			};
+		}
+
 		// get a device which satisfy the constraints
 		navigator.mediaDevices.getUserMedia(userMediaConstraints).then(function success(stream) {
 			// set the .src of the domElement
@@ -285,14 +295,24 @@ ARjs.Source.prototype.toggleMobileTorch = function(){
 	});
 }
 
+ARjs.Source.prototype.domElementWidth = function(){
+	return parseInt(this.domElement.style.width)
+}
+ARjs.Source.prototype.domElementHeight = function(){
+	return parseInt(this.domElement.style.height)
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //          handle resize
 ////////////////////////////////////////////////////////////////////////////////
 
-ARjs.Source.prototype.onResizeElement = function(mirrorDomElements){
+ARjs.Source.prototype.onResizeElement = function(){
 	var _this = this
 	var screenWidth = window.innerWidth
 	var screenHeight = window.innerHeight
+
+	// sanity check
+	console.assert( arguments.length === 0 )
 
 	// compute sourceWidth, sourceHeight
 	if( this.domElement.nodeName === "IMG" ){
@@ -330,28 +350,34 @@ ARjs.Source.prototype.onResizeElement = function(mirrorDomElements){
 		this.domElement.style.width = screenWidth+'px'
 		this.domElement.style.marginLeft = '0px'
 	}
-	
-	
-	if( arguments.length !== 0 ){
-		debugger
-		console.warn('use bad signature for arToolkitSource.copyElementSizeTo')
-	}
-	// honor default parameters
-	// if( mirrorDomElements !== undefined )	console.warn('still use the old resize. fix it')
-	if( mirrorDomElements === undefined )	mirrorDomElements = []
-	if( mirrorDomElements instanceof Array === false )	mirrorDomElements = [mirrorDomElements]	
-
-	// Mirror _this.domElement.style to mirrorDomElements
-	mirrorDomElements.forEach(function(domElement){
-		_this.copyElementSizeTo(domElement)
-	})
 }
-
+/*
 ARjs.Source.prototype.copyElementSizeTo = function(otherElement){
 	otherElement.style.width = this.domElement.style.width
 	otherElement.style.height = this.domElement.style.height	
 	otherElement.style.marginLeft = this.domElement.style.marginLeft
 	otherElement.style.marginTop = this.domElement.style.marginTop
+}
+*/
+
+ARjs.Source.prototype.copyElementSizeTo = function(otherElement){
+
+	if (window.innerWidth > window.innerHeight)
+	{
+		//landscape
+		otherElement.style.width = this.domElement.style.width
+		otherElement.style.height = this.domElement.style.height
+		otherElement.style.marginLeft = this.domElement.style.marginLeft
+		otherElement.style.marginTop = this.domElement.style.marginTop
+	}
+	else {
+		//portrait
+		otherElement.style.height = this.domElement.style.height
+		otherElement.style.width = (parseInt(otherElement.style.height) * 4/3)+"px";
+		otherElement.style.marginLeft = ((window.innerWidth- parseInt(otherElement.style.width))/2)+"px";
+		otherElement.style.marginTop = 0;
+	}
+
 }
 
 //////////////////////////////////////////////////////////////////////////////
